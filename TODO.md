@@ -1,0 +1,3 @@
+- [x] Modify ReportCard.jsx to display lat and lng in the report card and dialog
+- [x] Add householdCount display to ReportCard.jsx
+- [x] Test the changes to ensure lat, lng, and householdCount are displayed correctly

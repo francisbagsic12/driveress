@@ -1,0 +1,34 @@
+[
+  {
+    "barangay": "San Isidro",
+    "type": "Flood",
+    "severity": "high",
+    "timestamp": "2025-10-24T10:30:00Z",
+    "lat": 15.489,
+    "lng": 120.982
+  },
+  {
+    "barangay": "Maligaya",
+    "type": "Fire",
+    "severity": "medium",
+    "timestamp": "2025-10-24T11:15:00Z",
+    "lat": 15.501,
+    "lng": 120.975
+  },
+  {
+    "barangay": "Bagong Silang",
+    "type": "Landslide",
+    "severity": "low",
+    "timestamp": "2025-10-24T09:45:00Z",
+    "lat": 15.478,
+    "lng": 120.99
+  },
+  {
+    "barangay": "San Roque",
+    "type": "Earthquake",
+    "severity": "high",
+    "timestamp": "2025-10-24T08:20:00Z",
+    "lat": 15.495,
+    "lng": 120.965
+  }
+]

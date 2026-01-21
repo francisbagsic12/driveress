@@ -20,12 +20,12 @@ const db = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
-  database: "ai-driven",
+  database: "drive-ai-full",
 });
 app.use(
   cors({
     origin: "http://localhost:5173",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // ✅ Add PUT and OPTIONS
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
 );
@@ -351,7 +351,21 @@ app.post("/api/rescue-teams", (req, res) => {
     }
   );
 });
+const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(403).json({ error: "No token provided" });
 
+  try {
+    const decoded = jwt.verify(
+      token,
+      "9a1c3adcd3bc0ea35b25423c86edccecd066298040fde78eaf8908946fc09a82"
+    );
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ error: "Invalid token" });
+  }
+};
 // GET /api/rescue-teams
 app.get("/api/rescue-teams", (req, res) => {
   db.query(
@@ -416,7 +430,8 @@ app.post("/query", async (req, res) => {
           },
           {
             headers: {
-              Authorization:' Bearer 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',
+              Authorization:
+                " Bearer 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",
             },
           }
         );
@@ -442,17 +457,97 @@ app.post("/query", async (req, res) => {
   }
 });
 app.post("/api/shelters", (req, res) => {
-  const { name, occupancy, capacity, status } = req.body;
+  let {
+    name,
+    occupancy = 0,
+    capacity = 100,
+    status = "Moderate",
+    latitude,
+    longitude,
+  } = req.body;
+
+  // Trim name and validate required fields
+  if (!name || typeof name !== "string" || name.trim() === "") {
+    return res
+      .status(400)
+      .json({ error: "Shelter name is required and must be a valid string." });
+  }
+  name = name.trim();
+
+  // Validate latitude and longitude
+  if (latitude === undefined || longitude === undefined) {
+    return res
+      .status(400)
+      .json({ error: "Latitude and longitude are required." });
+  }
+
+  latitude = parseFloat(latitude);
+  longitude = parseFloat(longitude);
+
+  if (isNaN(latitude) || isNaN(longitude)) {
+    return res
+      .status(400)
+      .json({ error: "Latitude and longitude must be valid numbers." });
+  }
+
+  
+  if (latitude < -90 || latitude > 90) {
+    return res
+      .status(400)
+      .json({ error: "Latitude must be between -90 and 90." });
+  }
+  if (longitude < -180 || longitude > 180) {
+    return res
+      .status(400)
+      .json({ error: "Longitude must be between -180 and 180." });
+  }
+
+  // Validate and sanitize numbers
+  occupancy = parseInt(occupancy, 10);
+  capacity = parseInt(capacity, 10);
+
+  if (isNaN(occupancy) || occupancy < 0) occupancy = 0;
+  if (isNaN(capacity) || capacity < 1) capacity = 100;
+
+  // Validate status
+  const validStatuses = ["Moderate", "High", "Critical"];
+  if (!validStatuses.includes(status)) {
+    status = "Moderate"; // fallback to default
+  }
+
   const query = `
-    INSERT INTO shelters (name, occupancy, capacity, status)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO shelters
+    (name, occupancy, capacity, status, latitude, longitude, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, NOW())
   `;
-  db.query(query, [name, occupancy, capacity, status], (err, result) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-    res
-      .status(201)
-      .json({ id: result.insertId, name, occupancy, capacity, status });
-  });
+
+  db.query(
+    query,
+    [name, occupancy, capacity, status, latitude, longitude],
+    (err, result) => {
+      if (err) {
+        console.error("Error adding shelter:", err);
+        // Optional: Hide detailed DB error in production
+        return res
+          .status(500)
+          .json({ error: "Failed to add shelter. Please try again later." });
+      }
+
+      res.status(201).json({
+        message: "Evacuation center added successfully!",
+        shelter: {
+          id: result.insertId,
+          name,
+          occupancy,
+          capacity,
+          status,
+          latitude,
+          longitude,
+          updated_at: new Date().toISOString(),
+        },
+      });
+    }
+  );
 });
 
 app.get("/api/shelters", (req, res) => {
@@ -517,25 +612,9 @@ app.put("/api/shelters/:id", (req, res) => {
   );
 });
 
-const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(403).json({ error: "No token provided" });
-
-  try {
-    const decoded = jwt.verify(
-      token,
-      "9a1c3adcd3bc0ea35b25423c86edccecd066298040fde78eaf8908946fc09a82"
-    );
-    req.admin = decoded;
-    next();
-  } catch (err) {
-    res.status(401).json({ error: "Invalid token" });
-  }
-};
-
 // Example protected route
 app.get("/api/admin/dashboard", verifyToken, (req, res) => {
-  res.json({ message:` Welcome, ${req.admin.username} `});
+  res.json({ message: ` Welcome, ${req.admin.username} ` });
 });
 
 app.post("/api/admin/login", (req, res) => {
